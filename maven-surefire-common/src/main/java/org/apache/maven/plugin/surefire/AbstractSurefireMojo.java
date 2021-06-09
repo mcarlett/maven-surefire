@@ -753,6 +753,9 @@ public abstract class AbstractSurefireMojo
      */
     @Parameter( property = "dependenciesToScan" )
     private String[] dependenciesToScan;
+    
+    @Parameter( property = "dryRun" , defaultValue = "false", readonly = true)
+    private String dryRun;
 
     /**
      *
@@ -1369,8 +1372,39 @@ public abstract class AbstractSurefireMojo
             getProperties().setProperty( ProviderParameterNames.TESTNG_GROUPS_PROP, this.getGroups() );
         }
     }
+    
+    private void setDryRun() {
+    	boolean parsedDryRun = Boolean.parseBoolean(dryRun);
+    	if( parsedDryRun ) {
+    		printDryRunAlert();
+    		//ovverride config because the dryrun is executing with no fork
+    		int resetEffectiveForkCount = -1;
+    		String resetForkCount = "0";
+			logger.warn(String.format("ovverriding effectiveForkCount from %s to %s", effectiveForkCount, resetEffectiveForkCount));
+    		effectiveForkCount = resetEffectiveForkCount;
+			logger.warn(String.format("ovverriding forkCount from %s to %s", forkCount, resetForkCount));
+    		forkCount = resetForkCount;
+    	}
+		getProperties().setProperty( "dryRun", String.valueOf(parsedDryRun));
+    }
 
-    protected boolean isAnyConcurrencySelected()
+    private void printDryRunAlert() {
+		logger.info(""
+				+ "\n"
+				+ "\n"
+				+ "      _                                                                     _        \n"
+				+ "     | |                                                                   | |       \n"
+				+ "   __| |  _ __   _   _     _ __   _   _   _ __      _ __ ___     ___     __| |   ___ \n"
+				+ "  / _` | | '__| | | | |   | '__| | | | | | '_ \\    | '_ ` _ \\   / _ \\   / _` |  / _ \\\n"
+				+ " | (_| | | |    | |_| |   | |    | |_| | | | | |   | | | | | | | (_) | | (_| | |  __/\n"
+				+ "  \\__,_| |_|     \\__, |   |_|     \\__,_| |_| |_|   |_| |_| |_|  \\___/   \\__,_|  \\___|\n"
+				+ "                  __/ |                                                              \n"
+				+ "                 |___/                                                               \n"
+				+ "\n"				
+				+ "");		
+	}
+
+	protected boolean isAnyConcurrencySelected()
     {
         return getParallel() != null && !getParallel().trim().isEmpty();
     }
@@ -2918,6 +2952,7 @@ public abstract class AbstractSurefireMojo
         public void addProviderProperties() throws MojoExecutionException
         {
             convertGroupParameters();
+            setDryRun();
         }
 
         @Override

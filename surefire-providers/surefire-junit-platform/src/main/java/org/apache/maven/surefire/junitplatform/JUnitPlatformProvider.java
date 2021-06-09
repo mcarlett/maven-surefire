@@ -23,6 +23,7 @@ import static java.util.Arrays.stream;
 import static java.util.Collections.emptyMap;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
+import static java.util.logging.Level.INFO;
 import static java.util.logging.Level.WARNING;
 import static java.util.stream.Collectors.toList;
 import static org.apache.maven.surefire.booter.ProviderParameterNames.TESTNG_EXCLUDEDGROUPS_PROP;
@@ -104,25 +105,40 @@ public class JUnitPlatformProvider
     public RunResult invoke( Object forkTestSet )
                     throws TestSetFailedException, ReporterException
     {
+    	TestsToRun testsToRun = null;
         if ( forkTestSet instanceof TestsToRun )
         {
-            return invokeAllTests( (TestsToRun) forkTestSet );
+        	testsToRun = (TestsToRun) forkTestSet;
         }
         else if ( forkTestSet instanceof Class )
         {
-            return invokeAllTests( TestsToRun.fromClass( (Class<?>) forkTestSet ) );
+        	testsToRun = TestsToRun.fromClass( (Class<?>) forkTestSet );
         }
         else if ( forkTestSet == null )
         {
-            return invokeAllTests( scanClasspath() );
+        	testsToRun = scanClasspath();
         }
         else
         {
             throw new IllegalArgumentException( "Unexpected value of forkTestSet: " + forkTestSet );
         }
+        boolean isDryRun = Boolean.parseBoolean(parameters.getProviderProperties().get("dryRun"));
+        if ( isDryRun ) {
+        	print(testsToRun);
+        	testsToRun.markTestSetFinished();
+        	return RunResult.noTestsRun();
+        }
+        return invokeAllTests( testsToRun );
     }
 
-    private TestsToRun scanClasspath()
+    private void print(TestsToRun testsToRun) {
+    	Logger logger = Logger.getLogger( "dryrun" );
+    	for(Class<?> clazz : testsToRun) {
+    		logger.log(INFO, clazz.getName());
+    	}		
+	}
+
+	private TestsToRun scanClasspath()
     {
         TestPlanScannerFilter filter = new TestPlanScannerFilter( launcher, filters );
         ScanResult scanResult = parameters.getScanResult();
