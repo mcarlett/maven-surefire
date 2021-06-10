@@ -104,6 +104,11 @@
             <artifactId>assertj-core</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+	    	<groupId>org.apache.maven.surefire</groupId>
+	    	<artifactId>maven-dryrun-printers</artifactId>
+	    	<version>${project.version}</version>
+	    </dependency>
     </dependencies>
 
     <build>

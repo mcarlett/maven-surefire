@@ -43,6 +43,8 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.logging.Logger;
 
+import org.apache.maven.surefire.dryrun.printers.DryRunPrinter;
+import org.apache.maven.surefire.dryrun.printers.OutputType;
 import org.apache.maven.surefire.providerapi.AbstractProvider;
 import org.apache.maven.surefire.providerapi.ProviderParameters;
 import org.apache.maven.surefire.report.ConsoleOutputCapture;
@@ -131,11 +133,13 @@ public class JUnitPlatformProvider
         return invokeAllTests( testsToRun );
     }
 
-    private void print(TestsToRun testsToRun) {
-    	Logger logger = Logger.getLogger( "dryrun" );
-    	for(Class<?> clazz : testsToRun) {
-    		logger.log(INFO, clazz.getName());
-    	}		
+	private void print(TestsToRun testsToRun) {
+		String outType = parameters.getProviderProperties().get("dryRun.outType");
+		boolean isPrintDebugInFile = Boolean
+				.parseBoolean(parameters.getProviderProperties().get("dryRun.printDebugInFile"));
+		String printFilePath = parameters.getProviderProperties().get("dryRun.printFilePath");
+		OutputType out = OutputType.valueOf(outType != null ? outType.toUpperCase() : OutputType.LOG.name());
+		DryRunPrinter.print(testsToRun, parameters.getConsoleLogger(), out, isPrintDebugInFile, printFilePath);
 	}
 
 	private TestsToRun scanClasspath()

@@ -60,6 +60,7 @@
     <module>maven-failsafe-plugin</module>
     <module>maven-surefire-report-plugin</module>
     <module>surefire-its</module>
+    <module>maven-dryrun-printers</module>
   </modules>
 
   <scm>
