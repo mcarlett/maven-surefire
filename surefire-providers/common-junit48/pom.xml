@@ -23,10 +23,11 @@
   <parent>
     <groupId>org.apache.maven.surefire</groupId>
     <artifactId>surefire-providers</artifactId>
-    <version>2.22.1-dryrun-1</version>
+    <version>2.22.1-dryrun-SNAPSHOT</version>
   </parent>
 
   <artifactId>common-junit48</artifactId>
+  <version>2.22.1</version>
 
   <name>Shared JUnit48 Provider Code</name>
   <description>Shared JUnit48 Provider Code</description>
