@@ -23,11 +23,11 @@
   <parent>
     <groupId>org.apache.maven.surefire</groupId>
     <artifactId>surefire-providers</artifactId>
-    <version>2.22.1-dryrun-SNAPSHOT</version>
+    <version>2.22.1-dryrun-2</version>
   </parent>
 
   <artifactId>surefire-junit3</artifactId>
-  <version>2.22.1</version>
+  <version>2.22.1-dryrun-2</version>
 
   <name>SureFire JUnit Runner</name>
   <description>SureFire JUnit3 Runner</description>
