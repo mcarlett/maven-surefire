@@ -44,11 +44,8 @@ public class FilePrinter extends ClassPrinter {
 	}
 
 	@Override
-	protected void printLine(String line, boolean debug) {
-		boolean printDebugInFile = (Boolean)getParameters().get(Params.PRINT_DUBUG_IN_FILE.getVal());
-		if (!debug || (printDebugInFile && debug)) {
-			printWriter.println(line);
-		}
+	protected void printLine(String line) {
+		printWriter.println(line);
 	}
 
 }

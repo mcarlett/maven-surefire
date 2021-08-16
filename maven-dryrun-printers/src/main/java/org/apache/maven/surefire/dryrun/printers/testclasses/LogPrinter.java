@@ -14,7 +14,7 @@ public class LogPrinter extends ClassPrinter {
 	}
 
 	@Override
-	protected void printLine(String line, boolean debug) {
+	protected void printLine(String line) {
 		log.println(line);		
 	}
 

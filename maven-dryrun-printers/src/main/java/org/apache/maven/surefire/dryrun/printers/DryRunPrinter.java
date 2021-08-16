@@ -12,7 +12,6 @@ public class DryRunPrinter
     		, boolean printDebugInFile, String printFilePath)
     {
     	PrinterFactory.getPrinter(log, outputType)
-			.addParam(Params.PRINT_DUBUG_IN_FILE.getVal(), printDebugInFile)
 			.addParam(Params.PRINT_FILE_PATH.getVal(), printFilePath)
 			.addParam(Params.EXLUDED_CLASSES.getVal(), ignoredClasses)
 			.addParam(Params.EXTRA_CONTENT.getVal(), extraContent)

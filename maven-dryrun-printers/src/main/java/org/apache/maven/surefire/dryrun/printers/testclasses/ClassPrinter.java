@@ -29,14 +29,14 @@ public abstract class ClassPrinter extends TestPrinter {
 				.contains(cls.getName()))
 		.sorted(Comparator.comparing(Class::getName))
 		.forEach(clazz -> {
-			printLine(clazz.getName(), false);
+			printLine(clazz.getName());
 		});
 		for(String extra : (List<String>)getParameters().get(Params.EXTRA_CONTENT.getVal())) {
-			printLine(extra, false);
+			printLine(extra);
 		}
 		completeOut();
 	}
 	
-	protected abstract void printLine(String line, boolean debug);
+	protected abstract void printLine(String line);
 
 }

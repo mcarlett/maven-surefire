@@ -763,9 +763,6 @@ public abstract class AbstractSurefireMojo
     @Parameter( property = "dryRun.outType" , defaultValue = "LOG", readonly = true)
     private String dryRunOutType;
     
-    @Parameter( property = "dryRun.printDebugInFile" , defaultValue = "false", readonly = true)
-    private String dryRunPrintDebugInFile;
-    
     @Parameter( property = "dryRun.printFilePath" , readonly = true)
     private String dryRunPrintFilePath;
     
@@ -1404,7 +1401,6 @@ public abstract class AbstractSurefireMojo
 			logger.warn(String.format("ovverriding forkCount from %s to %s", forkCount, resetForkCount));
     		forkCount = resetForkCount;
     		getProperties().setProperty( "dryRun.outType", dryRunOutType);
-    		getProperties().setProperty( "dryRun.printDebugInFile", dryRunPrintDebugInFile);
     		getProperties().setProperty( "dryRun.printFilePath", dryRunPrintFilePath != null 
     				? dryRunPrintFilePath : "");
     		getProperties().setProperty( "dryRun.printTestsClasses", dryRunPrintTestsClasses != null 

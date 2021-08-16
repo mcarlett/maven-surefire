@@ -9,7 +9,6 @@ public abstract class TestPrinter {
 	
 	public enum Params {
 		
-		PRINT_DUBUG_IN_FILE("printDebugInFile"),
 		PRINT_FILE_PATH("printFilePath"),
 		EXLUDED_CLASSES("excludedClasses"),
 		EXTRA_CONTENT("extraContent");
