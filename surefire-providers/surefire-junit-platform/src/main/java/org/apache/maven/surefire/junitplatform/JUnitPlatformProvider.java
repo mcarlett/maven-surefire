@@ -23,7 +23,6 @@ import static java.util.Arrays.stream;
 import static java.util.Collections.emptyMap;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
-import static java.util.logging.Level.INFO;
 import static java.util.logging.Level.WARNING;
 import static java.util.stream.Collectors.toList;
 import static org.apache.maven.surefire.booter.ProviderParameterNames.TESTNG_EXCLUDEDGROUPS_PROP;
@@ -36,12 +35,15 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import org.apache.maven.surefire.dryrun.printers.DryRunPrinter;
 import org.apache.maven.surefire.dryrun.printers.OutputType;
@@ -62,6 +64,7 @@ import org.junit.platform.engine.Filter;
 import org.junit.platform.launcher.Launcher;
 import org.junit.platform.launcher.LauncherDiscoveryRequest;
 import org.junit.platform.launcher.TagFilter;
+import org.junit.platform.launcher.TestPlan;
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
 import org.junit.platform.launcher.core.LauncherFactory;
 
@@ -139,7 +142,43 @@ public class JUnitPlatformProvider
 				.parseBoolean(parameters.getProviderProperties().get("dryRun.printDebugInFile"));
 		String printFilePath = parameters.getProviderProperties().get("dryRun.printFilePath");
 		OutputType out = OutputType.valueOf(outType != null ? outType.toUpperCase() : OutputType.LOG.name());
-		DryRunPrinter.print(testsToRun, parameters.getConsoleLogger(), out, isPrintDebugInFile, printFilePath);
+		
+		//list of classes to print in the format class#method
+		List<String> printTestsClasses = Arrays.stream(parameters.getProviderProperties()
+				.get("dryRun.printTestsClasses").split(","))
+				.map(String::trim)
+				.filter(str -> !str.isEmpty())
+				.collect(Collectors.toList());
+		//generated extra content (list of cls#method)
+		List<String> extraContent = Collections.emptyList();
+		if(!printTestsClasses.isEmpty()) {
+			LauncherDiscoveryRequest discoveryRequest = buildLauncherDiscoveryRequest( testsToRun );
+			TestPlan plan = LauncherFactory.create().discover(discoveryRequest);
+			extraContent = getTestsFromClasses(plan, printTestsClasses);
+		}
+		//if classes is printed in the form cls#method, the class itself is excluded from the class list
+		DryRunPrinter.print(testsToRun, printTestsClasses, extraContent, parameters.getConsoleLogger(), out, isPrintDebugInFile, printFilePath);
+	}
+	
+	private List<String> getTestsFromClasses(final TestPlan testPlan, final List<String> printTestsClasses) {	
+		List<String> tests = new ArrayList<>();
+		testPlan.getRoots().stream().map(testPlan::getChildren)
+				.flatMap(set -> set.stream())
+				.filter(cls -> printTestsClasses.contains(cls.getLegacyReportingName()))
+				.forEach(cls -> {
+					testPlan.getChildren(cls).stream().forEach(
+							test -> {
+								StringBuilder sb = new StringBuilder(cls.getLegacyReportingName());
+								sb.append("#");
+								sb.append(test.getLegacyReportingName());
+								sb.setLength(sb.length() - 2); //remove last 2 chars '()'
+								tests.add(sb.toString());
+							}
+					);
+										
+				});
+		return tests;
+		
 	}
 
 	private TestsToRun scanClasspath()

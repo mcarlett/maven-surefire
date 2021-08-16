@@ -1,6 +1,57 @@
 // CHECKSTYLE_OFF: FileLength|RegexpHeader
 package org.apache.maven.plugin.surefire;
 
+import static java.lang.Thread.currentThread;
+import static java.util.Arrays.asList;
+import static java.util.Collections.addAll;
+import static java.util.Collections.singletonList;
+import static java.util.Collections.singletonMap;
+import static org.apache.commons.lang3.StringUtils.substringBeforeLast;
+import static org.apache.commons.lang3.SystemUtils.IS_OS_WINDOWS;
+import static org.apache.maven.plugin.surefire.SurefireHelper.replaceThreadNumberPlaceholders;
+import static org.apache.maven.plugin.surefire.util.DependencyScanner.filter;
+import static org.apache.maven.shared.utils.StringUtils.capitalizeFirstLetter;
+import static org.apache.maven.shared.utils.StringUtils.isEmpty;
+import static org.apache.maven.shared.utils.StringUtils.isNotBlank;
+import static org.apache.maven.shared.utils.StringUtils.isNotEmpty;
+import static org.apache.maven.shared.utils.StringUtils.split;
+import static org.apache.maven.surefire.booter.SystemUtils.JAVA_SPECIFICATION_VERSION;
+import static org.apache.maven.surefire.booter.SystemUtils.endsWithJavaPath;
+import static org.apache.maven.surefire.booter.SystemUtils.isBuiltInJava7AtLeast;
+import static org.apache.maven.surefire.booter.SystemUtils.isBuiltInJava9AtLeast;
+import static org.apache.maven.surefire.booter.SystemUtils.isJava9AtLeast;
+import static org.apache.maven.surefire.booter.SystemUtils.toJdkHomeFromJvmExec;
+import static org.apache.maven.surefire.booter.SystemUtils.toJdkVersionFromReleaseFile;
+import static org.apache.maven.surefire.suite.RunResult.failure;
+import static org.apache.maven.surefire.suite.RunResult.noTestsRun;
+import static org.apache.maven.surefire.util.ReflectionUtils.invokeGetter;
+import static org.apache.maven.surefire.util.ReflectionUtils.invokeStaticMethod;
+import static org.apache.maven.surefire.util.ReflectionUtils.tryLoadClass;
+
+import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.Array;
+import java.lang.reflect.Method;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Properties;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
+
+import javax.annotation.Nonnull;
+
+import org.apache.commons.lang3.StringUtils;
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -42,9 +93,9 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugin.descriptor.PluginDescriptor;
 import org.apache.maven.plugin.surefire.booterclient.ChecksumCalculator;
+import org.apache.maven.plugin.surefire.booterclient.ClasspathForkConfiguration;
 import org.apache.maven.plugin.surefire.booterclient.ForkConfiguration;
 import org.apache.maven.plugin.surefire.booterclient.ForkStarter;
-import org.apache.maven.plugin.surefire.booterclient.ClasspathForkConfiguration;
 import org.apache.maven.plugin.surefire.booterclient.JarManifestForkConfiguration;
 import org.apache.maven.plugin.surefire.booterclient.ModularClasspathForkConfiguration;
 import org.apache.maven.plugin.surefire.booterclient.Platform;
@@ -86,58 +137,10 @@ import org.apache.maven.surefire.util.SurefireReflectionException;
 import org.apache.maven.toolchain.DefaultToolchain;
 import org.apache.maven.toolchain.Toolchain;
 import org.apache.maven.toolchain.ToolchainManager;
-import org.codehaus.plexus.logging.Logger;
 import org.codehaus.plexus.languages.java.jpms.LocationManager;
 import org.codehaus.plexus.languages.java.jpms.ResolvePathsRequest;
 import org.codehaus.plexus.languages.java.jpms.ResolvePathsResult;
-
-import javax.annotation.Nonnull;
-import java.io.File;
-import java.io.IOException;
-import java.lang.reflect.Array;
-import java.lang.reflect.Method;
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Properties;
-import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
-import java.util.concurrent.ConcurrentHashMap;
-
-import static java.lang.Thread.currentThread;
-import static java.util.Arrays.asList;
-import static java.util.Collections.addAll;
-import static java.util.Collections.singletonList;
-import static java.util.Collections.singletonMap;
-import static org.apache.commons.lang3.StringUtils.substringBeforeLast;
-import static org.apache.commons.lang3.SystemUtils.IS_OS_WINDOWS;
-import static org.apache.maven.plugin.surefire.util.DependencyScanner.filter;
-import static org.apache.maven.plugin.surefire.SurefireHelper.replaceThreadNumberPlaceholders;
-import static org.apache.maven.shared.utils.StringUtils.capitalizeFirstLetter;
-import static org.apache.maven.shared.utils.StringUtils.isEmpty;
-import static org.apache.maven.shared.utils.StringUtils.isNotBlank;
-import static org.apache.maven.shared.utils.StringUtils.isNotEmpty;
-import static org.apache.maven.shared.utils.StringUtils.split;
-import static org.apache.maven.surefire.booter.SystemUtils.JAVA_SPECIFICATION_VERSION;
-import static org.apache.maven.surefire.booter.SystemUtils.endsWithJavaPath;
-import static org.apache.maven.surefire.booter.SystemUtils.isBuiltInJava7AtLeast;
-import static org.apache.maven.surefire.booter.SystemUtils.isBuiltInJava9AtLeast;
-import static org.apache.maven.surefire.booter.SystemUtils.isJava9AtLeast;
-import static org.apache.maven.surefire.booter.SystemUtils.toJdkHomeFromJvmExec;
-import static org.apache.maven.surefire.booter.SystemUtils.toJdkVersionFromReleaseFile;
-import static org.apache.maven.surefire.suite.RunResult.failure;
-import static org.apache.maven.surefire.suite.RunResult.noTestsRun;
-import static org.apache.maven.surefire.util.ReflectionUtils.invokeGetter;
-import static org.apache.maven.surefire.util.ReflectionUtils.invokeStaticMethod;
-import static org.apache.maven.surefire.util.ReflectionUtils.tryLoadClass;
+import org.codehaus.plexus.logging.Logger;
 
 /**
  * Abstract base class for running tests using Surefire.
@@ -765,6 +768,13 @@ public abstract class AbstractSurefireMojo
     
     @Parameter( property = "dryRun.printFilePath" , readonly = true)
     private String dryRunPrintFilePath;
+    
+    /**
+     * Comma separated values of classes to print test methods, i.e. MyClass1,Myclass2
+     * will be printed as MyClass1#test1,MyClass1#test2,MyClass2#test1..
+     */
+    @Parameter( property = "dryRun.printTestsClasses" , readonly = true )
+    private String[] dryRunPrintTestsClasses;
     
     /**
      *
@@ -1397,6 +1407,8 @@ public abstract class AbstractSurefireMojo
     		getProperties().setProperty( "dryRun.printDebugInFile", dryRunPrintDebugInFile);
     		getProperties().setProperty( "dryRun.printFilePath", dryRunPrintFilePath != null 
     				? dryRunPrintFilePath : "");
+    		getProperties().setProperty( "dryRun.printTestsClasses", dryRunPrintTestsClasses != null 
+    				? StringUtils.join(dryRunPrintTestsClasses, ',') : "");
     	}
 		getProperties().setProperty( "dryRun", String.valueOf(parsedDryRun));
     }
